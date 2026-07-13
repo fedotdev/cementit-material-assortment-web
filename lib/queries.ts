@@ -201,8 +201,24 @@ export async function getMaterialCatalogEntry(normalizedName: string) {
   return { material, composition, properties, mechanics, standardReferences, analogues }
 }
 
+function isMissingTableError(error: unknown): boolean {
+  let current: unknown = error
+
+  while (current instanceof Error) {
+    if ('code' in current && current.code === '42P01') return true
+    current = current.cause
+  }
+
+  return false
+}
+
 export async function getCategories() {
-  return db.select().from(categories).orderBy(asc(categories.sort))
+  try {
+    return await db.select().from(categories).orderBy(asc(categories.sort))
+  } catch (error) {
+    if (isMissingTableError(error)) return []
+    throw error
+  }
 }
 
 export async function getCategoryBySlug(slug: string) {
@@ -334,12 +350,17 @@ export async function getInternationalAnalogs(profileType: string): Promise<Stan
 
 /** Счётчики для главной. */
 export async function getCounts() {
-  const [row] = await db.select({
-    sizes: sql<number>`(SELECT count(*)::int FROM size_items)`,
-    standards: sql<number>`(SELECT count(*)::int FROM standards)`,
-    grades: sql<number>`(SELECT count(*)::int FROM steel_grades)`,
-  }).from(sql`(SELECT 1) AS one`)
-  return row
+  try {
+    const [row] = await db.select({
+      sizes: sql<number>`(SELECT count(*)::int FROM size_items)`,
+      standards: sql<number>`(SELECT count(*)::int FROM standards)`,
+      grades: sql<number>`(SELECT count(*)::int FROM steel_grades)`,
+    }).from(sql`(SELECT 1) AS one`)
+    return row ?? { sizes: 0, standards: 0, grades: 0 }
+  } catch (error) {
+    if (isMissingTableError(error)) return { sizes: 0, standards: 0, grades: 0 }
+    throw error
+  }
 }
 
 /** Соседние типоразмеры той же категории для блока «Аналоги». */
