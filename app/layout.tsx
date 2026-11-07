@@ -15,6 +15,9 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
 })
 
+// Pages read from Neon; render them per request so the build never depends on database access.
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Цементит — справочник сортаментов металлопроката',
   description:
